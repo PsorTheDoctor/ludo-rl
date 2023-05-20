@@ -13,13 +13,10 @@ class Rewards():
     def __init__(self, states, actions, epsilon=0.9, gamma=0.3, lr=0.2, learning=True):
         super().__init__()
         self.learning = learning
-        
         self.q_table = np.zeros([states, actions])
-
         self.epsilon_greedy = epsilon
         self.gamma = gamma
         self.lr = lr
-
         self.max_expected_reward = 0
         
         VERY_BAD = -0.8
@@ -87,6 +84,7 @@ class Rewards():
                 state, action = self.get_state_action_of_array(random_value, action_table)
         return (state, action)
 
+
     def q_learning_reward(self, state, new_action_table, action):
         state = int(state)
         action = int(action)
@@ -102,7 +100,7 @@ class Rewards():
         
         # Update the Q table from the new action taken in the current state
         self.q_table[state, action] = old_q_value + delta_q
-        # print("update q table, state: {0}, action:{1}".format(state,action))
+        # print("update q table, state: {0}, action:{1}".format(state, action))
 
     def sarsa_reward(self, state, new_action_table, action):
         state = int(state)
@@ -116,4 +114,18 @@ class Rewards():
 
         self.max_expected_reward += reward
         self.q_table[state, action] = old_q_value + delta_q
-    
+
+    def td0_reward(self, state, new_action_table, action):
+        state = int(state)
+        action = int(action)
+
+        reward = self.rewards_table[action]
+
+        old_q_value = self.q_table[state, action]
+        new_q_value = np.max(new_action_table[state, :])
+        delta_q = self.lr * (reward + self.gamma * new_q_value - old_q_value)
+
+        self.max_expected_reward += reward
+
+        # Update the Q table from the new action taken in the current state
+        self.q_table[state, action] = old_q_value + delta_q
