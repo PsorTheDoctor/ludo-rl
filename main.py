@@ -102,7 +102,7 @@ def start_teaching_ai_agent(agent, episodes, no_of_players, epsilon, epsilon_dec
         ai_player.rewards.max_expected_reward = 0
 
     # Moving averages
-    window_size = 20
+    window_size = 100
     cumsum_vec = np.cumsum(np.insert(win_rate_list, 0, 0)) 
     win_rate_ma = (cumsum_vec[window_size:] - cumsum_vec[:-window_size]) / window_size
 
