@@ -4,9 +4,9 @@ from stateSpace import Action
 
 
 class Rewards():
-
     rewards_table = np.zeros(len(Action))
     q_table = None
+    q2_table = None  # For double Q-learning
     epoch = 0
     iteration = 0
 
@@ -14,6 +14,7 @@ class Rewards():
         super().__init__()
         self.learning = learning
         self.q_table = np.zeros([states, actions])
+        self.q2_table = np.zeros([states, actions])
         self.epsilon_greedy = epsilon
         self.gamma = gamma
         self.lr = lr
@@ -66,9 +67,9 @@ class Rewards():
         action = idx[1][random_idx]
         return (state, action)
 
-    def choose_next_action(self, player, action_table):
+    def choose_next_action(self, action_table):
         q_table_options = np.multiply(self.q_table, action_table)
-    
+
         if random.uniform(0, 1) < self.epsilon_greedy:
             self.iteration = self.iteration + 1
             nz = action_table[np.logical_not(np.isnan(action_table))]
@@ -84,6 +85,33 @@ class Rewards():
                 state, action = self.get_state_action_of_array(random_value, action_table)
         return (state, action)
 
+    def choose_next_action_double_q_learning(self, action_table):
+        q_table_options = np.multiply(self.q_table, action_table)
+        q2_table_options = np.multiply(self.q2_table, action_table)
+
+        if random.uniform(0, 1) < self.epsilon_greedy:
+            self.iteration = self.iteration + 1
+            nz = action_table[np.logical_not(np.isnan(action_table))]
+            random_value = nz[random.randint(0, len(nz) - 1)]
+            state, action = self.get_state_action_of_array(random_value, action_table)
+        else:
+            q_max_val = np.nanmax(q_table_options)
+            q2_max_val = np.nanmax(q2_table_options)
+
+            if not np.isnan(q_max_val) and not np.isnan(q2_max_val):
+                if random.uniform(0, 1) < 0.5:
+                    state, action = self.get_state_action_of_array(q_max_val, q_table_options)
+                else:
+                    state, action = self.get_state_action_of_array(q2_max_val, q2_table_options)
+            elif not np.isnan(q_max_val):
+                state, action = self.get_state_action_of_array(q_max_val, q_table_options)
+            elif not np.isnan(q2_max_val):
+                state, action = self.get_state_action_of_array(q2_max_val, q2_table_options)
+            else:
+                nz = action_table[np.logical_not(np.isnan(action_table))]
+                random_value = nz[random.randint(0, len(nz) - 1)]
+                state, action = self.get_state_action_of_array(random_value, action_table)
+        return (state, action)
 
     def q_learning_reward(self, state, new_action_table, action):
         state = int(state)
@@ -101,6 +129,26 @@ class Rewards():
         # Update the Q table from the new action taken in the current state
         self.q_table[state, action] = old_q_value + delta_q
         # print("update q table, state: {0}, action:{1}".format(state, action))
+
+    def double_q_learning_reward(self, state, action):
+        state = int(state)
+        action = int(action)
+
+        reward = self.rewards_table[action]
+        if random.random() < 0.5:
+            new_q_values = self.q_table[state]
+            best_new_action = np.argmax(new_q_values)
+            new_q_value = self.q2_table[state, best_new_action]
+            delta_q = self.lr * (reward + self.gamma * new_q_value - self.q_table[state, action])
+            self.q_table[state, action] += delta_q
+        else:
+            new_q_values = self.q2_table[state]
+            best_new_action = np.argmax(new_q_values)
+            new_q_value = self.q_table[state, best_new_action]
+            delta_q = self.lr * (reward + self.gamma * new_q_value - self.q2_table[state, action])
+            self.q2_table[state, action] += delta_q
+
+        self.max_expected_reward += reward
 
     def sarsa_reward(self, state, new_action_table, action):
         state = int(state)

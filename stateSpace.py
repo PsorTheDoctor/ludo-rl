@@ -47,7 +47,6 @@ class Action(Enum):
 
 
 class StateSpace():
-
     quarter_game_size = 13
     star_positions = [5, 12, 18, 25, 31, 38, 44, 51]
     globe_positions_global = [9, 22, 35, 48]

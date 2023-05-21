@@ -25,7 +25,7 @@ def display_q_table(q_table):
             ax.set_ylabel('States')
         ax.set_xticks(np.arange(n), labels=actions)
         ax.xaxis.set_ticks_position('bottom')
-        ax.xaxis.set_tick_params(rotation=90)
+        ax.xaxis.set_tick_params(rotation=45)
 
     plt.tight_layout()
     plt.show()
