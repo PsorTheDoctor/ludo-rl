@@ -215,7 +215,7 @@ fig, axs = plt.subplots(1)
 axs.set_title("Epsilon Decay")
 axs.set_xlabel('Episodes')
 axs.set_ylabel('Epsilon')
-axs.plot(q_learning_epsilons, color='tab:red')
+axs.plot(q_learning_epsilons[:-1], color='tab:red')
 axs.legend(['Epsilon Decay 0.05'])
 
 q_learning_means = [np.mean(q_learning_win_rates[0]), np.mean(q_learning_win_rates[1]), np.mean(q_learning_win_rates[2])]
@@ -224,6 +224,18 @@ sarsa_means = [np.mean(sarsa_win_rates[0]), np.mean(sarsa_win_rates[1]), np.mean
 q_learning_stds = [np.std(q_learning_win_rates[0]), np.std(q_learning_win_rates[1]), np.std(q_learning_win_rates[2])]
 dq_learning_stds = [np.std(dq_learning_win_rates[0]), np.std(dq_learning_win_rates[1]), np.std(dq_learning_win_rates[2])]
 sarsa_stds = [np.std(sarsa_win_rates[0]), np.std(sarsa_win_rates[1]), np.std(sarsa_win_rates[2])]
+
+for n in range(3):
+    print('Win rate against {} opponents'.format(n + 1))
+    print('Q-learning: {} mean: {} std: {}'.format(
+        q_learning_win_rates[n][-1], q_learning_means[n], q_learning_stds[n]
+    ))
+    print('Double Q-learning: {} mean: {} std: {}'.format(
+        dq_learning_win_rates[n][-1], dq_learning_means[n], dq_learning_stds[n]
+    ))
+    print('SARSA: {} mean: {} std: {}'.format(
+        sarsa_win_rates[n][-1], sarsa_means[n], sarsa_stds[n]
+    ))
 
 fig, axs = plt.subplots(1)
 axs.set_title('Win Rate comparision')
