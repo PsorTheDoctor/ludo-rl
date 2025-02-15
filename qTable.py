@@ -1,5 +1,6 @@
 import random
 import numpy as np
+from scipy.stats import entropy
 from stateSpace import Action
 
 
@@ -7,6 +8,7 @@ class Rewards():
     rewards_table = np.zeros(len(Action))
     q_table = None
     q2_table = None  # For double Q-learning
+    q3_table = None
     epoch = 0
     iteration = 0
 
@@ -15,11 +17,13 @@ class Rewards():
         self.learning = learning
         self.q_table = np.zeros([states, actions])
         self.q2_table = np.zeros([states, actions])
+        self.q3_table = np.zeros([states, actions])
         self.epsilon_greedy = epsilon
         self.gamma = gamma
         self.lr = lr
+        self.epsilon = epsilon
         self.max_expected_reward = 0
-        
+
         VERY_BAD = -0.8
         BAD = -0.4
         GOOD = 0.4
@@ -113,6 +117,40 @@ class Rewards():
                 state, action = self.get_state_action_of_array(random_value, action_table)
         return (state, action)
 
+    def choose_next_action_mulitple_q_learning(self, action_table):
+        q_table_options = np.multiply(self.q_table, action_table)
+        q2_table_options = np.multiply(self.q2_table, action_table)
+        q3_table_options = np.multiply(self.q3_table, action_table)
+
+        if random.uniform(0, 1) < self.epsilon_greedy:
+            self.iteration = self.iteration + 1
+            nz = action_table[np.logical_not(np.isnan(action_table))]
+            random_value = nz[random.randint(0, len(nz) - 1)]
+            state, action = self.get_state_action_of_array(random_value, action_table)
+        else:
+            q_max_val = np.nanmax(q_table_options)
+            q2_max_val = np.nanmax(q2_table_options)
+            q3_max_val = np.nanmax(q3_table_options)
+
+            if not np.isnan(q_max_val) and not np.isnan(q2_max_val) and not np.isnan(q3_max_val):
+                if random.uniform(0, 1) < 0.3333:
+                    state, action = self.get_state_action_of_array(q_max_val, q_table_options)
+                elif random.uniform(0, 1) < 0.6667:
+                    state, action = self.get_state_action_of_array(q2_max_val, q2_table_options)
+                else:
+                    state, action = self.get_state_action_of_array(q3_max_val, q3_table_options)
+            elif not np.isnan(q_max_val):
+                state, action = self.get_state_action_of_array(q_max_val, q_table_options)
+            elif not np.isnan(q2_max_val):
+                state, action = self.get_state_action_of_array(q2_max_val, q2_table_options)
+            elif not np.isnan(q3_max_val):
+                state, action = self.get_state_action_of_array(q3_max_val, q3_table_options)
+            else:
+                nz = action_table[np.logical_not(np.isnan(action_table))]
+                random_value = nz[random.randint(0, len(nz) - 1)]
+                state, action = self.get_state_action_of_array(random_value, action_table)
+        return (state, action)
+
     def q_learning_reward(self, state, new_action_table, action):
         state = int(state)
         action = int(action)
@@ -163,6 +201,24 @@ class Rewards():
         self.max_expected_reward += reward
         self.q_table[state, action] = old_q_value + delta_q
 
+    def expected_sarsa_reward(self, state, new_action_table, action):
+        state = int(state)
+        action = int(action)
+        n_actions = 27
+
+        reward = self.rewards_table[action]
+        old_q_value = self.q_table[state, action]
+
+        # Calculate the expected Q-value for the next state
+        new_q_values = new_action_table[state, :]
+        probabilities = np.full(n_actions, self.epsilon / n_actions)
+        probabilities[action] += 1 - self.epsilon
+        expected_new_q_value = np.dot(new_q_values, probabilities)
+        delta_q = self.lr * (reward + self.gamma * expected_new_q_value - old_q_value)
+
+        self.max_expected_reward += reward
+        self.q_table[state, action] = old_q_value + delta_q
+
     def td0_reward(self, state, new_action_table, action):
         state = int(state)
         action = int(action)
@@ -177,3 +233,83 @@ class Rewards():
 
         # Update the Q table from the new action taken in the current state
         self.q_table[state, action] = old_q_value + delta_q
+
+    def multiple_q_learning_reward(self, state, action):
+        state = int(state)
+        action = int(action)
+
+        reward = self.rewards_table[action]
+        if random.random() < 0.3333:
+            new_q_values = self.q_table[state]
+            best_new_action = np.argmax(new_q_values)
+            new_q_value = self.q2_table[state, best_new_action]
+            delta_q = self.lr * (reward + self.gamma * new_q_value - self.q_table[state, action])
+            self.q_table[state, action] += delta_q
+        elif random.random() < 0.6667:
+            new_q_values = self.q2_table[state]
+            best_new_action = np.argmax(new_q_values)
+            new_q_value = self.q3_table[state, best_new_action]
+            delta_q = self.lr * (reward + self.gamma * new_q_value - self.q2_table[state, action])
+            self.q2_table[state, action] += delta_q
+        else:
+            new_q_values = self.q3_table[state]
+            best_new_action = np.argmax(new_q_values)
+            new_q_value = self.q_table[state, best_new_action]
+            delta_q = self.lr * (reward + self.gamma * new_q_value - self.q3_table[state, action])
+            self.q3_table[state, action] += delta_q
+
+        self.max_expected_reward += reward
+
+    # def project_distrib(self, current_distrib, kl_divergence, target_distrib):
+    #     v_min = -1.3
+    #     v_max = 1.9
+    #     num_atoms = current_distrib.shape[0]
+    #     support = np.linspace(v_min, v_max, num_atoms)
+    #
+    #     # Compute the shift needed for the projection
+    #     shifted_support = support[:, np.newaxis] - kl_divergence * (support - target_distrib)
+    #
+    #     # Clip the shifted support within the valid range
+    #     projected_support = np.clip(shifted_support, v_min, v_max)
+    #
+    #     # Compute the projected distribution by interpolating the shifted support
+    #     projected_distrib = np.zeros_like(current_distrib)
+    #     for i in range(num_atoms):
+    #         indices = np.searchsorted(support, projected_support[i])
+    #         if np.any(indices):
+    #             projected_distrib[indices] += current_distrib[i]
+    #
+    #     # Normalize the projected distribution
+    #     projected_distrib /= np.sum(projected_distrib)
+    #     return projected_distrib
+
+    # def distrib_q_learning_reward(self, state, new_action_table, action):
+    #     state = int(state)
+    #     action = int(action)
+    #     v_min = -1.3
+    #     v_max = 1.9
+    #
+    #     # Distributional Q-learning (C51)
+    #     num_atoms = self.q_table.shape[1]
+    #     support = np.linspace(v_min, v_max, num_atoms)
+    #
+    #     # Update the target distribution
+    #     target_distrib = np.zeros_like(self.q_table[state])
+    #     target_atom = self.gamma * np.sum(self.q_table * new_action_table, axis=1)
+    #     target_distrib[np.argmax(target_atom)] += 1.0
+    #
+    #     # Update the current distribution
+    #     current_distrib = self.q_table[state, action]
+    #
+    #     # Calculate the Kullback-Leibler divergence between the target and current distributions
+    #     kl_divergence = entropy(target_distrib, current_distrib)
+    #
+    #     # Update the Q table using the Cramer distance
+    #     self.q_table[state, action] = self.project_distrib(current_distrib, kl_divergence, target_distrib)
+    #
+    #     # Compute the expected value based on the updated distribution
+    #     expected_value = np.sum(support * self.q_table[state, action])
+    #
+    #     # Track the accumulated reward
+    #     self.max_expected_reward += expected_value
+    #     return expected_value

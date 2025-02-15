@@ -1,5 +1,4 @@
 from enum import Enum
-
 import numpy as np
 from actionTable import ActionTable
 from ludopy.player import Player
@@ -18,7 +17,7 @@ class Action(Enum):
     HOME_Goal = 2  # Move into goal position
     HOME_Star = 3  # Move on star (jump forward)
     HOME_Globe = 4  # Move to a save point
-    HOME_Protect = 5  # Move to same token as yourself -> save
+    HOME_Protect = 5  # Move to save token as yourself
     HOME_Kill = 6  # Kill another player
     HOME_Die = 7  # Move to a field where opponent has 2 or more pieces
     HOME_GoalZone = 8  # Move into goal zone
